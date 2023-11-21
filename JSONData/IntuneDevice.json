@@ -1,0 +1,36 @@
+{
+    "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#deviceManagement/managedDevices/$entity",
+    "id": "12345678-1234-1234-1234-1234567890ab",
+    "enrolledDateTime": "2023-11-08T14:30:00Z",
+    "operatingSystem": "Windows 10",
+    "displayName": "Device001",
+    "model": "Surface Pro",
+    "manufacturer": "Microsoft",
+    "serialNumber": "ABCD1234",
+    "applications": [
+        {
+            "id": "abcdef01-2345-6789-abcd-ef0123456789",
+            "displayName": "App1",
+            "publisher": "Publisher1",
+            "version": "1.0.0"
+        },
+        {
+            "id": "efgh2345-6789-abcd-1234-fg5678912345",
+            "displayName": "App2",
+            "publisher": "Publisher2",
+            "version": "2.0.0"
+        }
+    ],
+    "policies": [
+        {
+            "id": "policy-123",
+            "name": "Security Policy",
+            "description": "Security policy for Windows 10 devices"
+        },
+        {
+            "id": "policy-456",
+            "name": "App Policy",
+            "description": "Application policy for Surface Pro"
+        }
+    ]
+}
