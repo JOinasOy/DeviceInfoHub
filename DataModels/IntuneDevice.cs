@@ -11,21 +11,21 @@ namespace DeviceInfoHub.DataModels
     {
         public string Id { get; set; }
 
-        public DateTime EnrolledDateTime { get; set; }
+        public DateTime? EnrolledDateTime { get; set; }
 
-        public string OperatingSystem { get; set; }
+        public string? OperatingSystem { get; set; }
 
-        public string DisplayName { get; set; }
+        public string? DisplayName { get; set; }
 
-        public string Model { get; set; }
+        public string? Model { get; set; }
 
-        public string Manufacturer { get; set; }
+        public string? Manufacturer { get; set; }
 
-        public string SerialNumber { get; set; }
+        public string? SerialNumber { get; set; }
 
-        public List<Application> Applications { get; set; }
+        public List<Application>? Applications { get; set; }
 
-        public List<Policy> Policies { get; set; }
+        public List<Policy>? Policies { get; set; }
     }
 
 

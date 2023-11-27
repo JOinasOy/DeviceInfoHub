@@ -44,9 +44,13 @@ namespace DeviceInfoHub.Function
 
             using (var context = new IntuneDeviceDbContext())
             {
-                context.Database.EnsureCreated();
-                context.intuneDevice.Add(intDevice);
-                context.SaveChanges();
+                bool deviceExists = context.intuneDevice.Any(u => u.Id == intDevice.Id);
+                if (!deviceExists)
+                {
+                    context.Database.EnsureCreated();
+                    context.intuneDevice.Add(intDevice);
+                    context.SaveChanges();
+                }
             }
 
             var response = req.CreateResponse(HttpStatusCode.OK);
