@@ -7,9 +7,11 @@ using Microsoft.EntityFrameworkCore;
 namespace DeviceInfoHub.DataModels
 
 {
-    public class IntuneDevice
+    public class Device
     {
         public string Id { get; set; }
+
+        public string CustomerId { get; set; }
 
         public DateTime? EnrolledDateTime { get; set; }
 
@@ -45,9 +47,9 @@ namespace DeviceInfoHub.DataModels
         // Add policy-specific properties as needed
     }
 
-    public class IntuneDeviceDbContext : DbContext
+    public class DeviceDbContext : DbContext
     {
-        public DbSet<IntuneDevice> intuneDevice { get; set; }
+        public DbSet<Device> device { get; set; }
     
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
