@@ -73,6 +73,7 @@ namespace DeviceInfoHub.ApiClients
                         Id = device.Id,
                         CustomerId = customerId,
                         DisplayName = device.DisplayName,
+                        //SerialNumber = device.jotain,
                         EnrolledDateTime = device.RegistrationDateTime?.DateTime ?? DateTime.MinValue,
                         OperatingSystem = $"{device.OperatingSystem} {device.OperatingSystemVersion}"
                     };

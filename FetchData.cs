@@ -63,28 +63,23 @@ namespace DeviceInfoHub.Function
                 if (customer.KandjiApiKey != null)
                 {
                     KandjiApiClient.Initialize(customer.KandjiApiKey);
-                    //var organizations = await KandjiApiClient.GetOrganizations();
 
-                    //foreach (var org in organizations)
-                    //{
-                        var userDevices = await KandjiApiClient.GetDevices();
+                    var userDevices = await KandjiApiClient.GetDevices(customer.Id);
 
-                        foreach (var device in userDevices)
+                    foreach (var device in userDevices)
+                    {
+                        using (var context = new DeviceDbContext())
                         {
-                            using (var context = new DeviceDbContext())
+                            bool deviceExists = context.device.Any(u => u.Id == device.Id);
+                            
+                            if (!deviceExists)
                             {
-                                bool deviceExists = context.device.Any(u => u.Id == device.device_id);
-                                /*
-                                if (!deviceExists)
-                                {
-                                    context.Database.EnsureCreated();
-                                    context.device.Add(device);
-                                    context.SaveChanges();
-                                }
-                                */
+                                context.Database.EnsureCreated();
+                                context.device.Add(device);
+                                context.SaveChanges();
                             }
                         }
-                    //}
+                    }
                 }
             }
             var response = req.CreateResponse(HttpStatusCode.OK);
