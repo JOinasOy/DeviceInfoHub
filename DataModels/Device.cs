@@ -11,7 +11,7 @@ namespace DeviceInfoHub.DataModels
     {
         public string Id { get; set; }
 
-        public string CustomerId { get; set; }
+        public string CompanyId { get; set; }
 
         public DateTime? EnrolledDateTime { get; set; }
 

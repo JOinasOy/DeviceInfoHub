@@ -42,7 +42,7 @@ namespace DeviceInfoHub.ApiClients
             }
         }
 
-        public static async Task<List<DataModels.Device>> GetDevices(string customerId)
+        public static async Task<List<DataModels.Device>> GetDevices(string companyId)
         {
             try
             {
@@ -62,7 +62,7 @@ namespace DeviceInfoHub.ApiClients
                     var resultDevice = new DataModels.Device
                     {
                         Id = device.device_id,
-                        CustomerId = customerId,
+                        CompanyId = companyId,
                         SerialNumber = device.serial_number,
                         DisplayName = device.device_name,
                         EnrolledDateTime = device.first_enrollment,

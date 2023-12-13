@@ -26,11 +26,11 @@ namespace DeviceInfoHub.Function
 
             logger.LogInformation("C# HTTP trigger function processed a request.");
 
-            List<Customer> customers = new List<Customer>();
+            List<Company> customers = new List<Company>();
 
             using (var context = new CustomerDbContext())
             {
-                customers = await context.customer.ToListAsync();
+                customers = await context.company.ToListAsync();
             }
 
             foreach (var customer in customers)

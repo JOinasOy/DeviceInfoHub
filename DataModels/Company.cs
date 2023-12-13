@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace DeviceInfoHub.DataModels
 
 {
-    public class Customer
+    public class Company
     {
         public string Id { get; set; } 
 
@@ -24,7 +24,7 @@ namespace DeviceInfoHub.DataModels
 
     public class CustomerDbContext : DbContext
     {
-        public DbSet<Customer> customer { get; set; }
+        public DbSet<Company> company { get; set; }
     
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

@@ -6,7 +6,7 @@ GO
 USE DeviceInfoHubDB;
 GO
 
-CREATE TABLE Customer (
+CREATE TABLE Company (
     Id NVARCHAR(255) PRIMARY KEY,
     Name nvarchar(255),
     ClientId NVARCHAR(255),
@@ -19,7 +19,7 @@ GO
 -- Create the Device table
 CREATE TABLE Device (
     Id nvarchar(255) PRIMARY KEY,
-    CustomerId nvarchar(255) REFERENCES Customers(Id),
+    CompanyId nvarchar(255) REFERENCES Company(Id),
     EnrolledDateTime datetime,
     OperatingSystem nvarchar(255),
     DisplayName nvarchar(255),
@@ -35,7 +35,7 @@ CREATE TABLE Application (
     DisplayName nvarchar(255),
     Publisher nvarchar(255),
     Version nvarchar(50),
-    IntuneDeviceId nvarchar(255) REFERENCES Devices(Id)
+    DeviceId nvarchar(255) REFERENCES Device(Id)
 );
 GO
 
@@ -44,6 +44,6 @@ CREATE TABLE Policy (
     Id nvarchar(255) PRIMARY KEY,
     Name nvarchar(255),
     Description nvarchar(max),
-    IntuneDeviceId nvarchar(255) REFERENCES Devices(Id)
+    DeviceId nvarchar(255) REFERENCES Device(Id)
 );
 GO
