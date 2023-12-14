@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using DeviceInfoHub.DataModels;
 using DeviceInfoHub.ApiClients;
+using DeviceInfoHub.Helpers;
 using Microsoft.Graph;
 using Microsoft.Identity.Client;
 using System.Net.Http.Headers;
@@ -25,18 +26,24 @@ namespace DeviceInfoHub.Function
             var logger = executionContext.GetLogger("HttpTriggerFunction");
 
             logger.LogInformation("C# HTTP trigger function processed a request.");
-
+            var DBCryptKey = Environment.GetEnvironmentVariable("DBCryptKey");
+            
             List<Company> customers = new List<Company>();
 
-            using (var context = new CustomerDbContext())
+            using (var context = new CompanyDbContext())
             {
                 customers = await context.company.ToListAsync();
             }
 
             foreach (var customer in customers)
             {
-                if (customer.ClientId != null && customer.ClientSecret != null && customer.TenantId != null)
+
+                if (!string.IsNullOrEmpty(customer.ClientId) && !string.IsNullOrEmpty(customer.ClientSecret) && !string.IsNullOrEmpty(customer.TenantId))
                 {
+                    customer.ClientId = EncryptionHelper.DecryptString(DBCryptKey, customer.ClientId);
+                    customer.ClientSecret = EncryptionHelper.DecryptString(DBCryptKey, customer.ClientSecret);
+                    customer.TenantId = EncryptionHelper.DecryptString(DBCryptKey, customer.TenantId);
+                    
                     GraphApiClient.Initialize(customer.TenantId, customer.ClientId, customer.ClientSecret);
                     var users = await GraphApiClient.GetUsers();
 
@@ -60,8 +67,9 @@ namespace DeviceInfoHub.Function
                     }
                 }
 
-                if (customer.KandjiApiKey != null)
+                if (!string.IsNullOrEmpty(customer.KandjiApiKey))
                 {
+                    customer.KandjiApiKey = EncryptionHelper.DecryptString(DBCryptKey, customer.KandjiApiKey);
                     KandjiApiClient.Initialize(customer.KandjiApiKey);
 
                     var userDevices = await KandjiApiClient.GetDevices(customer.Id);

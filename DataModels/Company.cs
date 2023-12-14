@@ -22,7 +22,7 @@ namespace DeviceInfoHub.DataModels
         public string? KandjiApiKey { get; set; }
     }
 
-    public class CustomerDbContext : DbContext
+    public class CompanyDbContext : DbContext
     {
         public DbSet<Company> company { get; set; }
     

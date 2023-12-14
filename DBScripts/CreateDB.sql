@@ -1,9 +1,9 @@
 -- Create a new database
-CREATE DATABASE DeviceInfoHubDB;
+CREATE DATABASE deviceinfohub;
 GO
 
 -- Switch to the new database
-USE DeviceInfoHubDB;
+USE deviceinfohub;
 GO
 
 CREATE TABLE Company (
