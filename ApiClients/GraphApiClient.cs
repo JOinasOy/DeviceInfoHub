@@ -1,6 +1,7 @@
 using Microsoft.Graph;
 using Azure.Identity;
 using DeviceInfoHub.DataModels;
+using DeviceInfoHub.Helpers;
 using Microsoft.EntityFrameworkCore.Infrastructure.Internal;
 using Microsoft.Graph.Models;
 using System.Threading.Tasks;
@@ -13,6 +14,17 @@ namespace DeviceInfoHub.ApiClients
 
         public static void Initialize(string tenantId, string clientId, string clientSecret)
         {
+            string? DBCryptKey = Environment.GetEnvironmentVariable("DBCryptKey");
+            
+            if (string.IsNullOrEmpty(DBCryptKey)) {
+                Console.WriteLine("Error: Check DBCryptKey!");
+                return;
+            }
+            clientId = EncryptionHelper.DecryptString(DBCryptKey, clientId);
+            clientSecret = EncryptionHelper.DecryptString(DBCryptKey, clientSecret);
+            tenantId = EncryptionHelper.DecryptString(DBCryptKey, tenantId);
+            DBCryptKey = null;
+
             var options = new TokenCredentialOptions
             {   
                 AuthorityHost = AzureAuthorityHosts.AzurePublicCloud
@@ -50,7 +62,7 @@ namespace DeviceInfoHub.ApiClients
                 return new List<string>();
             }
         }
-        public static async Task<List<DataModels.Device>> GetUserDevices(string companyId, string username)
+        public static async Task<List<DataModels.Device>> GetUserDevices(int companyId, string username)
         {
             try
             {
@@ -70,12 +82,13 @@ namespace DeviceInfoHub.ApiClients
                 {
                     var intDevice = new DataModels.Device
                     {
-                        Id = device.Id,
+                        DeviceId = device.Id,
                         CompanyId = companyId,
                         DisplayName = device.DisplayName,
                         //SerialNumber = device.jotain,
                         EnrolledDateTime = device.RegistrationDateTime?.DateTime ?? DateTime.MinValue,
-                        OperatingSystem = $"{device.OperatingSystem} {device.OperatingSystemVersion}"
+                        OperatingSystem = $"{device.OperatingSystem} {device.OperatingSystemVersion}",
+                        LastUpdated = DateTime.Now
                     };
 
                     intDevices.Add(intDevice);

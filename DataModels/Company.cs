@@ -9,10 +9,8 @@ namespace DeviceInfoHub.DataModels
 {
     public class Company
     {
-        public string Id { get; set; } 
-
-        public string? Name { get; set; }
-        
+        public int Id { get; set; }
+        public string Name { get; set; }
         public string? ClientId { get; set; }
 
         public string? TenantId { get; set; }
@@ -20,6 +18,10 @@ namespace DeviceInfoHub.DataModels
         public string? ClientSecret { get; set; }
 
         public string? KandjiApiKey { get; set; }
+
+        public DateTime? LastUpdated { get; set; }
+
+        public bool Archived { get; set; }
     }
 
     public class CompanyDbContext : DbContext

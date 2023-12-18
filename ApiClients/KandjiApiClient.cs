@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
 using DeviceInfoHub.DataModels;
+using DeviceInfoHub.Helpers;
 using Newtonsoft.Json;
 
 namespace DeviceInfoHub.ApiClients
@@ -14,6 +15,15 @@ namespace DeviceInfoHub.ApiClients
 
         public static void Initialize(string apiKey)
         {
+            string? DBCryptKey = Environment.GetEnvironmentVariable("DBCryptKey");
+            
+            if (string.IsNullOrEmpty(DBCryptKey)) {
+                Console.WriteLine("Error: Check DBCryptKey!");
+                return;
+            }
+            apiKey = EncryptionHelper.DecryptString(DBCryptKey, apiKey);
+            DBCryptKey = null;
+
             _apiKey = apiKey;
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
@@ -42,7 +52,7 @@ namespace DeviceInfoHub.ApiClients
             }
         }
 
-        public static async Task<List<DataModels.Device>> GetDevices(string companyId)
+        public static async Task<List<DataModels.Device>> GetDevices(int companyId)
         {
             try
             {
@@ -61,12 +71,13 @@ namespace DeviceInfoHub.ApiClients
                 {
                     var resultDevice = new DataModels.Device
                     {
-                        Id = device.device_id,
+                        DeviceId = device.device_id,
                         CompanyId = companyId,
                         SerialNumber = device.serial_number,
                         DisplayName = device.device_name,
                         EnrolledDateTime = device.first_enrollment,
-                        OperatingSystem = $"{device.platform} {device.os_version}"
+                        OperatingSystem = $"{device.platform} {device.os_version}",
+                        LastUpdated = DateTime.Now
                     };
 
                     resultDevices.Add(resultDevice);

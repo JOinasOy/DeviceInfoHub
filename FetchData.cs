@@ -26,68 +26,37 @@ namespace DeviceInfoHub.Function
             var logger = executionContext.GetLogger("HttpTriggerFunction");
 
             logger.LogInformation("C# HTTP trigger function processed a request.");
-            var DBCryptKey = Environment.GetEnvironmentVariable("DBCryptKey");
             
-            List<Company> customers = new List<Company>();
+            List<Company> companies = new List<Company>();
 
             using (var context = new CompanyDbContext())
             {
-                customers = await context.company.ToListAsync();
+                companies = await context.company.ToListAsync();
             }
 
-            foreach (var customer in customers)
+            foreach (var company in companies)
             {
 
-                if (!string.IsNullOrEmpty(customer.ClientId) && !string.IsNullOrEmpty(customer.ClientSecret) && !string.IsNullOrEmpty(customer.TenantId))
+                if (!string.IsNullOrEmpty(company.ClientId) && !string.IsNullOrEmpty(company.ClientSecret) && !string.IsNullOrEmpty(company.TenantId))
                 {
-                    customer.ClientId = EncryptionHelper.DecryptString(DBCryptKey, customer.ClientId);
-                    customer.ClientSecret = EncryptionHelper.DecryptString(DBCryptKey, customer.ClientSecret);
-                    customer.TenantId = EncryptionHelper.DecryptString(DBCryptKey, customer.TenantId);
-                    
-                    GraphApiClient.Initialize(customer.TenantId, customer.ClientId, customer.ClientSecret);
+                    GraphApiClient.Initialize(company.TenantId, company.ClientId, company.ClientSecret);
                     var users = await GraphApiClient.GetUsers();
 
                     foreach (var user in users)
                     {
-                        var userDevices = await GraphApiClient.GetUserDevices(customer.Id, user);
+                        var userDevices = await GraphApiClient.GetUserDevices(company.Id, user);
 
-                        foreach (var device in userDevices)
-                        {
-                            using (var context = new DeviceDbContext())
-                            {
-                                bool deviceExists = context.device.Any(u => u.Id == device.Id);
-                                if (!deviceExists)
-                                {
-                                    context.Database.EnsureCreated();
-                                    context.device.Add(device);
-                                    context.SaveChanges();
-                                }
-                            }
-                        }
+                        saveDevicesToDB(company, userDevices);
                     }
                 }
 
-                if (!string.IsNullOrEmpty(customer.KandjiApiKey))
+                if (!string.IsNullOrEmpty(company.KandjiApiKey))
                 {
-                    customer.KandjiApiKey = EncryptionHelper.DecryptString(DBCryptKey, customer.KandjiApiKey);
-                    KandjiApiClient.Initialize(customer.KandjiApiKey);
+                    KandjiApiClient.Initialize(company.KandjiApiKey);
 
-                    var userDevices = await KandjiApiClient.GetDevices(customer.Id);
+                    var userDevices = await KandjiApiClient.GetDevices(company.Id);
 
-                    foreach (var device in userDevices)
-                    {
-                        using (var context = new DeviceDbContext())
-                        {
-                            bool deviceExists = context.device.Any(u => u.Id == device.Id);
-                            
-                            if (!deviceExists)
-                            {
-                                context.Database.EnsureCreated();
-                                context.device.Add(device);
-                                context.SaveChanges();
-                            }
-                        }
-                    }
+                    saveDevicesToDB(company, userDevices);
                 }
             }
             var response = req.CreateResponse(HttpStatusCode.OK);
@@ -97,5 +66,38 @@ namespace DeviceInfoHub.Function
 
             return response;
         }
+
+        public static void saveDevicesToDB(Company company, List<DataModels.Device> userDevices)
+        {
+            using (var context = new DeviceDbContext())
+            {
+                foreach (var device in userDevices)
+                {
+
+                    context.Database.EnsureCreated();
+                    var item = context.device.Where(u => u.DeviceId == device.DeviceId && u.CompanyId == company.Id);
+
+                    if (item.Count() == 0)
+                    {
+                        context.device.Add(device);
+                    }
+                    else
+                    {
+                        var firstItem = item.First();
+                        if (device.CompanyId == firstItem.CompanyId && device.DeviceId == firstItem.DeviceId)
+                        {
+                            device.Id = firstItem.Id;
+                            if (device.isUpdated(firstItem))
+                            {  
+                                context.Entry(item.First()).CurrentValues.SetValues(device);
+                            }
+                        }
+                    }
+                    
+                    context.SaveChanges();
+                }               
+            }
+        }
     }
+
 }

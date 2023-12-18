@@ -78,7 +78,7 @@ namespace DeviceInfoHub
                 }
                 else
                 {
-                    devices = await context.device.Where(e => e.CompanyId == companyId).ToListAsync();
+                    devices = await context.device.Where(e => e.CompanyId == int.Parse(companyId)).ToListAsync();
                 }
                 jsonData = JsonConvert.SerializeObject(devices);
             }
@@ -104,7 +104,7 @@ namespace DeviceInfoHub
 
                 if (!string.IsNullOrEmpty(companyId))
                 {
-                    var company = companies.Where(e => e.Id == companyId);
+                    var company = companies.Where(e => e.Id == int.Parse(companyId));
                     jsonData = JsonConvert.SerializeObject(company);
                 }
             }
@@ -115,12 +115,19 @@ namespace DeviceInfoHub
         {
             string jsonData = "";
             var DBCryptKey = Environment.GetEnvironmentVariable("DBCryptKey");
+            
+            if (string.IsNullOrEmpty(DBCryptKey)) {
+                Console.WriteLine("Error: Check DBCryptKey!");
+                return "Error";
+            }
+
             Company company = new Company();
 
-            if(headers.TryGetValues("CompanyId", out var Id))
+            if(headers.TryGetValues("CompanyId", out var id))
             {
-                company.Id = Id.First();
+                company.Id = int.Parse(id.First());
             }
+
             if(headers.TryGetValues("CompanyName", out var name))
             {
                 company.Name = name.First();
@@ -141,23 +148,30 @@ namespace DeviceInfoHub
             {
                 company.KandjiApiKey = EncryptionHelper.EncryptString(DBCryptKey, kandjiApiKey.First());
             }
+            if(headers.TryGetValues("Archived", out var archived))
+            {
+                company.Archived = bool.Parse(archived.First());
+            }
+            company.LastUpdated = DateTime.Now;
+            DBCryptKey = null;
 
             using (var context = new CompanyDbContext())
             {
+                context.Database.EnsureCreated();
                 bool deviceExists = context.company.Any(u => u.Id == company.Id);
                 
                 if (!deviceExists)
-                {
-                    context.Database.EnsureCreated();
+                {    
+                    company.Id = 0;
                     context.company.Add(company);
-                    context.SaveChanges();
+                    jsonData = "Company added succesfully!";
                 }
                 else
                 {
-                    context.Database.EnsureCreated();
                     context.company.Update(company);
-                    context.SaveChanges(); 
+                    jsonData = "Company updated succesfully!";
                 }
+                context.SaveChanges();
             }
             return jsonData;
         }

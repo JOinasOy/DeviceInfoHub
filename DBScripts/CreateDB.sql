@@ -7,43 +7,57 @@ USE deviceinfohub;
 GO
 
 CREATE TABLE Company (
-    Id NVARCHAR(255) PRIMARY KEY,
-    Name nvarchar(255),
-    ClientId NVARCHAR(255),
-    TenantId NVARCHAR(255),
-    ClientSecret NVARCHAR(255),
-    KandjiApiKey NVARCHAR(255)
+    Id INT IDENTITY(1,1) NOT NULL,
+    Name nvarchar(50),
+    ClientId NVARCHAR(70),
+    TenantId NVARCHAR(70),
+    ClientSecret NVARCHAR(70),
+    KandjiApiKey NVARCHAR(70),
+    LastUpdated datetime,
+    Archived BIT,
+    PRIMARY KEY (Id)
 );
 GO
 
 -- Create the Device table
 CREATE TABLE Device (
-    Id nvarchar(255) PRIMARY KEY,
-    CompanyId nvarchar(255) REFERENCES Company(Id),
+    Id INT IDENTITY(1,1) NOT NULL,
+    DeviceId nvarchar(50),
+    CompanyId int REFERENCES Company(Id),
     EnrolledDateTime datetime,
-    OperatingSystem nvarchar(255),
-    DisplayName nvarchar(255),
-    Model nvarchar(255),
-    Manufacturer nvarchar(255),
-    SerialNumber nvarchar(255),
+    OperatingSystem nvarchar(50),
+    DisplayName nvarchar(50),
+    Model nvarchar(50),
+    Manufacturer nvarchar(50),
+    SerialNumber nvarchar(30),
+    LastUpdated datetime,
+    LastUpdatedDesc nvarchar(255),
+    Archived BIT,
+    PRIMARY KEY (Id)
 );
 GO
 
 -- Create the Application table
 CREATE TABLE Application (
-    Id nvarchar(255) PRIMARY KEY,
-    DisplayName nvarchar(255),
-    Publisher nvarchar(255),
+    Id INT IDENTITY(1,1) NOT NULL,
+    DisplayName nvarchar(50),
+    Publisher nvarchar(50),
     Version nvarchar(50),
-    DeviceId nvarchar(255) REFERENCES Device(Id)
+    DeviceId int REFERENCES Device(Id),
+    LastUpdated datetime,
+    Archived BIT,
+    PRIMARY KEY (Id)
 );
 GO
 
 -- Create the Policy table
 CREATE TABLE Policy (
-    Id nvarchar(255) PRIMARY KEY,
-    Name nvarchar(255),
+    Id INT IDENTITY(1,1) NOT NULL,
+    Name nvarchar(50),
     Description nvarchar(max),
-    DeviceId nvarchar(255) REFERENCES Device(Id)
+    DeviceId int REFERENCES Device(Id),
+    LastUpdated datetime,
+    Archived BIT,
+    PRIMARY KEY (Id)
 );
 GO
