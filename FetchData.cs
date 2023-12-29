@@ -28,7 +28,7 @@ namespace DeviceInfoHub.Function
         public static async Task<HttpResponseData> RunAsync([HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req, FunctionContext executionContext)
         {
             List<DataModels.Device> devices = new List<DataModels.Device>();
-                
+
             // Initialize logger to log information during function execution
             var logger = executionContext.GetLogger("HttpTriggerFunction");
             logger.LogInformation("C# HTTP trigger function processed a request.");
@@ -53,7 +53,8 @@ namespace DeviceInfoHub.Function
                         {
                             GraphApiClient.Initialize(company.TenantId, company.ClientId, company.ClientSecret);
 
-                            devices = await GraphApiClient.GetDevices(company.Id);
+                            var intDevices = await GraphApiClient.GetDevices(company.Id);
+                            devices.AddRange(intDevices);
                         }
 
                         // If company has a Kandji API key, initialize KandjiApiClient and fetch devices
@@ -61,9 +62,10 @@ namespace DeviceInfoHub.Function
                         {
                             KandjiApiClient.Initialize(company.KandjiApiKey);
 
-                            devices = await KandjiApiClient.GetDevices(company.Id);
+                            var kandjiDevices = await KandjiApiClient.GetDevices(company.Id);
+                            devices.AddRange(kandjiDevices);
                         }
-
+                        // Save devices to database
                         saveDevicesToDB(company, devices);
                     }
                 }
