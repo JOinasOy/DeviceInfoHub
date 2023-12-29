@@ -27,55 +27,73 @@ namespace DeviceInfoHub.Function
         [Function("FetchData")]
         public static async Task<HttpResponseData> RunAsync([HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req, FunctionContext executionContext)
         {
+            List<DataModels.Device> devices = new List<DataModels.Device>();
+                
             // Initialize logger to log information during function execution
             var logger = executionContext.GetLogger("HttpTriggerFunction");
             logger.LogInformation("C# HTTP trigger function processed a request.");
             
-            // Get companies from the database
-            List<Company> companies = new List<Company>();
-            using (var context = new CompanyDbContext())
+            try
             {
-                companies = await context.company.ToListAsync();
-            }
-
-            // Iterate over each company and query device data from sources if not archived
-            foreach (var company in companies)
-            {
-                // If company is not arhived
-                if (!company.Archived)
+                // Get companies from the database
+                List<Company> companies = new List<Company>();
+                using (var context = new CompanyDbContext())
                 {
-                    // If company has valid Graph API credentials, initialize GraphApiClient and fetch devices
-                    if (!string.IsNullOrEmpty(company.ClientId) && !string.IsNullOrEmpty(company.ClientSecret) && !string.IsNullOrEmpty(company.TenantId))
+                    companies = await context.company.ToListAsync();
+                }
+
+                // Iterate over each company and query device data from sources if not archived
+                foreach (var company in companies)
+                {
+                    // If company is not arhived
+                    if (!company.Archived)
                     {
-                        GraphApiClient.Initialize(company.TenantId, company.ClientId, company.ClientSecret);
+                        // If company has valid Graph API credentials, initialize GraphApiClient and fetch devices
+                        if (!string.IsNullOrEmpty(company.ClientId) && !string.IsNullOrEmpty(company.ClientSecret) && !string.IsNullOrEmpty(company.TenantId))
+                        {
+                            GraphApiClient.Initialize(company.TenantId, company.ClientId, company.ClientSecret);
 
-                        var devices = await GraphApiClient.GetDevices(company.Id);
+                            devices = await GraphApiClient.GetDevices(company.Id);
+                        }
 
-                        saveDevicesToDB(company, devices);
-                    }
+                        // If company has a Kandji API key, initialize KandjiApiClient and fetch devices
+                        if (!string.IsNullOrEmpty(company.KandjiApiKey))
+                        {
+                            KandjiApiClient.Initialize(company.KandjiApiKey);
 
-                    // If company has a Kandji API key, initialize KandjiApiClient and fetch devices
-                    if (!string.IsNullOrEmpty(company.KandjiApiKey))
-                    {
-                        KandjiApiClient.Initialize(company.KandjiApiKey);
-
-                        var devices = await KandjiApiClient.GetDevices(company.Id);
+                            devices = await KandjiApiClient.GetDevices(company.Id);
+                        }
 
                         saveDevicesToDB(company, devices);
                     }
                 }
+
+                // Create an HTTP response with status code 200 OK
+                ResponseInfo resInfo = new ResponseInfo("Devices fetched successfully!");
+                resInfo.Details = new { 
+                    count = devices.Count()
+                };
+                var response = req.CreateResponse(HttpStatusCode.OK);
+                response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
+                response.WriteString(resInfo.ToJson());
+
+                return response;
             }
-
-            // Create an HTTP response with status code 200 OK
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
-            response.WriteString("Executed succesfully!");
-
-            return response;
+            catch (Exception ex) // In case an error occured
+            {
+                ResponseInfo resInfo = new ResponseInfo(req.Method + " FetchData: failed");
+                resInfo.Details = new { ErrorText = ex.Message };
+                logger.LogError($"An error occurred: {ex.Message}");
+                
+                var response = req.CreateResponse(HttpStatusCode.OK);
+                response.Headers.Add("Content-Type", "application/json; charset=utf-8");
+                response.WriteString(resInfo.ToJson());
+                return response;
+            }
         }
 
         // Method to save or update device data in the database
-        public static void saveDevicesToDB(Company company, List<DataModels.Device> devices)
+        private static void saveDevicesToDB(Company company, List<DataModels.Device> devices)
         {
             using (var context = new DeviceDbContext())
             {

@@ -69,8 +69,14 @@ namespace DeviceInfoHub
             }
             catch (Exception ex) // In case an error occured
             {
+                ResponseInfo resInfo = new ResponseInfo(req.Method + ": " + id + " failed");
+                resInfo.Details = new { ErrorText = ex.Message };
                 logger.LogError($"An error occurred: {ex.Message}");
-                return req.CreateResponse(HttpStatusCode.InternalServerError);
+                
+                var response = req.CreateResponse(HttpStatusCode.OK);
+                response.Headers.Add("Content-Type", "application/json; charset=utf-8");
+                response.WriteString(resInfo.ToJson());
+                return response;
             }
         }
 
@@ -79,7 +85,7 @@ namespace DeviceInfoHub
         /// </summary>
         /// <param name="companyId">defined company id</param>
         /// <returns>All or defined company devices</returns>
-        public static async Task<string> GetDevicesFunction(string companyId)
+        private static async Task<string> GetDevicesFunction(string companyId)
         {
             string jsonData = "";
             List<DataModels.Device> devices;
@@ -107,7 +113,7 @@ namespace DeviceInfoHub
         /// </summary>
         /// <param name="companyId">defined company id</param>
         /// <returns>All or defined company details</returns>
-        public static async Task<string> GetCompanyFunction(string companyId)
+        private static async Task<string> GetCompanyFunction(string companyId)
         {
             string jsonData = "";
 
@@ -144,9 +150,9 @@ namespace DeviceInfoHub
         /// </summary>
         /// <param name="headers">header parameters</param>
         /// <returns>JSON data</returns>
-        public static async Task<string> SaveCompanyFunction(HttpHeadersCollection headers)
+        private static async Task<string> SaveCompanyFunction(HttpHeadersCollection headers)
         {
-            string jsonData = "";
+            ResponseInfo resInfo = new ResponseInfo("");
             Company company = new Company();
 
             // Retrieve the encryption key for the database
@@ -154,8 +160,8 @@ namespace DeviceInfoHub
             
             // Check if the DBCryptKey is available, otherwise log an error
             if (string.IsNullOrEmpty(DBCryptKey)) {
-                Console.WriteLine("Error: Check DBCryptKey!");
-                return "Error";
+                resInfo.Message = "Checking for the DBCryptKey failed";
+                return resInfo.ToJson();
             }
 
             // Try to get company id from the header parameters
@@ -168,76 +174,95 @@ namespace DeviceInfoHub
             using (var context = new CompanyDbContext())
             {
                 // If company exists in the database
-                var deviceExists = context.company.Where(u => u.Id == company.Id);
-                if (deviceExists.Count() > 0)
+                var deviceExists = await context.company.FirstOrDefaultAsync(u => u.Id == company.Id);
+                if (deviceExists != null)
                 {
                     // Set current company values with existing company values
-                    company = deviceExists.First();
+                    company = deviceExists;
                 }
 
-                // Try to get company name from the header parameters
-                if(headers.TryGetValues("CompanyName", out var name))
-                {
-                    // Set current company name
-                    company.Name = name.First();
-                }
-                // Try to get client id from the header parameters
-                if(headers.TryGetValues("ClientId", out var clientId))
-                {
-                    // Encrypt client id and set value
-                    company.ClientId = EncryptionHelper.EncryptString(DBCryptKey, clientId.First());
-                }
-                // Try to get client secret from the header parameters
-                if(headers.TryGetValues("ClientSecret", out var clientSecret))
-                {
-                    // Encrypt client secret and set value
-                    company.ClientSecret = EncryptionHelper.EncryptString(DBCryptKey, clientSecret.First());
-                }
-                // Try to get tenant id from the header parameters
-                if(headers.TryGetValues("TenantId", out var tenantId))
-                {
-                    // Encrypt tenant id and set value
-                    company.TenantId = EncryptionHelper.EncryptString(DBCryptKey, tenantId.First());
-                }
-                // Try to get kandji api key from the header parameters
-                if(headers.TryGetValues("KandjiApiKey", out var kandjiApiKey))
-                {
-                    // Encrypt kandji api key and set value
-                    company.KandjiApiKey = EncryptionHelper.EncryptString(DBCryptKey, kandjiApiKey.First());
-                }
-                // Try to get archived value from the header parameters
-                if(headers.TryGetValues("Archived", out var archived))
-                {
-                    // Set archived value
-                    company.Archived = bool.Parse(archived.First());
-                }
+                // Update company values
+                UpdateCompanyFromHeaders(company, headers, DBCryptKey);
+
                 // Set last updated value to current date and time
                 company.LastUpdated = DateTime.Now;
                 // Set DBCryptKey to null value for security reasons
                 DBCryptKey = null;
                 
                 // If device added
-                if (deviceExists.Count() == 0)
+                if (deviceExists == null)
                 {    
                     // set company id 
                     company.Id = 0;
                     // Add company to the database context
                     context.company.Add(company);
                     // Set return value
-                    jsonData = "Company added succesfully!";
+                    resInfo.Message = "Company added succesfully!";
                 }
                 else // If device updated
                 {
                     // Update company to the database context
                     context.company.Update(company);
                     // Set return value
-                    jsonData = "Company updated succesfully!";
+                    resInfo.Message = "Company updated succesfully!";
                 }
                 // Save changes to the database
                 context.SaveChanges();
             
             }
-            return jsonData;
+
+            return resInfo.ToJson();
+        }
+
+        /// <summary>
+        /// Updates a Company object with information from HTTP headers.
+        /// This method parses the headers for specific keys related to company details,
+        /// such as company name, client ID, client secret, tenant ID, Kandji API key, and 
+        /// archived status. Where applicable, it encrypts certain values using the provided 
+        /// DBCryptKey before updating the Company object. 
+        /// The method assumes that the necessary headers are present and correctly formatted.
+        /// </summary>
+        /// <param name="company">The Company object to be updated.</param>
+        /// <param name="headers">The HttpHeadersCollection containing the header parameters.</param>
+        /// <param name="DBCryptKey">The encryption key used for encrypting sensitive information.</param>
+        private static void UpdateCompanyFromHeaders(Company company, HttpHeadersCollection headers, string DBCryptKey)
+        {
+            // Try to get company name from the header parameters
+            if(headers.TryGetValues("CompanyName", out var name))
+            {
+                // Set current company name
+                company.Name = name.First();
+            }
+            // Try to get client id from the header parameters
+            if(headers.TryGetValues("ClientId", out var clientId))
+            {
+                // Encrypt client id and set value
+                company.ClientId = EncryptionHelper.EncryptString(DBCryptKey, clientId.First());
+            }
+            // Try to get client secret from the header parameters
+            if(headers.TryGetValues("ClientSecret", out var clientSecret))
+            {
+                // Encrypt client secret and set value
+                company.ClientSecret = EncryptionHelper.EncryptString(DBCryptKey, clientSecret.First());
+            }
+            // Try to get tenant id from the header parameters
+            if(headers.TryGetValues("TenantId", out var tenantId))
+            {
+                // Encrypt tenant id and set value
+                company.TenantId = EncryptionHelper.EncryptString(DBCryptKey, tenantId.First());
+            }
+            // Try to get kandji api key from the header parameters
+            if(headers.TryGetValues("KandjiApiKey", out var kandjiApiKey))
+            {
+                // Encrypt kandji api key and set value
+                company.KandjiApiKey = EncryptionHelper.EncryptString(DBCryptKey, kandjiApiKey.First());
+            }
+            // Try to get archived value from the header parameters
+            if(headers.TryGetValues("Archived", out var archived))
+            {
+                // Set archived value
+                company.Archived = bool.Parse(archived.First());
+            }
         }
     }
 }

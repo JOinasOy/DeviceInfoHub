@@ -8,7 +8,6 @@ using Microsoft.Kiota.Abstractions;
 using Microsoft.EntityFrameworkCore.Update.Internal;
 
 namespace DeviceInfoHub.DataModels
-
 {
     /// <summary>
     /// Represents the data model for a Device in the system.
