@@ -49,6 +49,11 @@ namespace DeviceInfoHub
                         {
                             jsonData = GetCompanyFunction(companyId).Result;
                         }
+                        // Get users data from database and return it in JSON
+                        if (id == "GetUsers") 
+                        {
+                            jsonData = GetUsersFunction(companyId).Result;
+                        }
                         break;
 
                     case "POST":
@@ -56,6 +61,11 @@ namespace DeviceInfoHub
                         if (id == "SaveCompany") 
                         {   
                             jsonData = SaveCompanyFunction(req.Headers).Result;
+                        }
+                        // Save or update user details to the database
+                        if (id == "SaveUser") 
+                        {   
+                            jsonData = SaveUserFunction(req.Headers).Result;
                         }
                         break;
                 }
@@ -141,6 +151,34 @@ namespace DeviceInfoHub
                     // Serialize object to JSON
                     jsonData = JsonConvert.SerializeObject(company);
                 }
+            }
+            return jsonData;
+        }
+
+        /// <summary>
+        /// Gets users data from the database
+        /// </summary>
+        /// <param name="companyId">defined company id</param>
+        /// <returns>All or defined users details</returns>
+        private static async Task<string> GetUsersFunction(string companyId)
+        {
+            string jsonData = "";
+            List<DataModels.Users> users;
+
+            using (var context = new UsersDbContext())
+            {
+                // Company id is not defined
+                if (string.IsNullOrEmpty(companyId))
+                {
+                    users = await context.users.ToListAsync();
+                }
+                else // Company id is defined
+                {
+                    // Get all users with defined company id in the database
+                    users = await context.users.Where(e => e.CompanyId == int.Parse(companyId)).ToListAsync();
+                }
+                // Serialize object to JSON
+                jsonData = JsonConvert.SerializeObject(users);
             }
             return jsonData;
         }
@@ -262,6 +300,108 @@ namespace DeviceInfoHub
             {
                 // Set archived value
                 company.Archived = bool.Parse(archived.First());
+            }
+        }
+
+        /// <summary>
+        /// Saves or updates users details in the database
+        /// </summary>
+        /// <param name="headers">header parameters</param>
+        /// <returns>JSON data</returns>
+        private static async Task<string> SaveUserFunction(HttpHeadersCollection headers)
+        {
+            ResponseInfo resInfo = new ResponseInfo("");
+            Users users = new Users();
+
+            // Try to get user id from the header parameters
+            if(headers.TryGetValues("Id", out var id))
+            {
+                // Set current user id
+                users.Id = int.Parse(id.First());
+            }
+
+            using (var context = new UsersDbContext())
+            {
+                // If user exists in the database
+                var userExists = await context.users.FirstOrDefaultAsync(u => u.Id == users.Id);
+                if (userExists != null)
+                {
+                    // Set current company values with existing company values
+                    users = userExists;
+                }
+
+                // Update company values
+                UpdateUsersFromHeaders(users, headers);
+
+                // Set last updated value to current date and time
+                users.LastUpdated = DateTime.Now;
+                
+                // If user added
+                if (userExists == null)
+                {    
+                    // set user id 
+                    users.Id = 0;
+                    // Add user to the database context
+                    context.users.Add(users);
+                    // Set return value
+                    resInfo.Message = "User added succesfully!";
+                }
+                else // If user updated
+                {
+                    // Update user to the database context
+                    context.users.Update(users);
+                    // Set return value
+                    resInfo.Message = "User updated succesfully!";
+                }
+                // Save changes to the database
+                context.SaveChanges();
+            
+            }
+
+            return resInfo.ToJson();
+        }
+
+        /// <summary>
+        /// Updates a user object with information from HTTP headers.
+        /// The method assumes that the necessary headers are present and correctly formatted.
+        /// </summary>
+        /// <param name="users">The users object to be updated.</param>
+        /// <param name="headers">The HttpHeadersCollection containing the header parameters.</param>
+        private static void UpdateUsersFromHeaders(Users users, HttpHeadersCollection headers)
+        {
+            // Try to get userid from the header parameters
+            if(headers.TryGetValues("UserId", out var userId))
+            {
+                // Set current userid
+                users.UserId = userId.First();
+            }
+            if(headers.TryGetValues("CompanyId", out var companyId))
+            {
+                users.CompanyId = int.Parse(companyId.First());
+            }
+            if(headers.TryGetValues("DisplayName", out var displayName))
+            {
+                users.DisplayName = displayName.First();
+            }
+            if(headers.TryGetValues("UserPrincipalName", out var userPrincipalName))
+            {
+                users.UserPrincipalName = userPrincipalName.First();
+            }
+            if(headers.TryGetValues("GivenName", out var givenName))
+            {
+                users.GivenName = givenName.First();
+            }
+            if(headers.TryGetValues("Email", out var email))
+            {
+                users.Email = email.First();
+            }
+            if(headers.TryGetValues("Department", out var department))
+            {
+                users.Department = department.First();
+            }
+            if(headers.TryGetValues("Archived", out var archived))
+            {
+                users.Archived = bool.Parse(archived.First());
             }
         }
     }
