@@ -5,8 +5,17 @@ using System.Text;
 
 namespace DeviceInfoHub.Helpers
 {
+    /// <summary>
+    /// Provides methods to encrypt and decrypt strings using AES encryption.
+    /// </summary>
     public class EncryptionHelper
     {
+        /// <summary>
+        /// Encrypts a plain text string using a specified key.
+        /// </summary>
+        /// <param name="key">The encryption key.</param>
+        /// <param name="plainText">The text to be encrypted.</param>
+        /// <returns>The encrypted string in Base64 format.</returns>
         public static string EncryptString(string key, string plainText)
         {
             byte[] iv = new byte[16];
@@ -36,6 +45,12 @@ namespace DeviceInfoHub.Helpers
             return Convert.ToBase64String(array);
         }
 
+        /// <summary>
+        /// Decrypts a cipher text string using a specified key.
+        /// </summary>
+        /// <param name="key">The decryption key.</param>
+        /// <param name="cipherText">The text to be decrypted.</param>
+        /// <returns>The decrypted plain text string.</returns>
         public static string DecryptString(string key, string cipherText)
         {
             byte[] iv = new byte[16];

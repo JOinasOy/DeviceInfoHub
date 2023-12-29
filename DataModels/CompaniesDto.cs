@@ -7,6 +7,9 @@ using Microsoft.EntityFrameworkCore;
 namespace DeviceInfoHub.DataModels
 
 {
+    /// <summary>
+    /// Represents the data model for a Company without secret values in the system. 
+    /// </summary>
     public class CompaniesDto
     {
         public int Id { get; set; } 

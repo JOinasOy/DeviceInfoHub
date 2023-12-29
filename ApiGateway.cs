@@ -13,27 +13,38 @@ using Microsoft.Graph.Models;
 
 namespace DeviceInfoHub
 {
+    /// <summary>
+    /// Api Gateway is Azure function which provides data from the database and updates data to the database. 
+    /// </summary>
     public class ApiGateway
     {
+        // Azure Function triggered by HTTP requests (GET or POST) with a specific authorization level
         [Function("ApiGateway")]
         public static async Task<HttpResponseData> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = "data/{id}")] HttpRequestData req, string id, FunctionContext executionContext)
         {
             string jsonData = "";
-            var logger = executionContext.GetLogger("HttpTriggerFunction");
 
+            // Initialize logger to log information during function execution
+            var logger = executionContext.GetLogger("HttpTriggerFunction");
             logger.LogInformation($"Processing GET request for data with ID: {id}");
+
+            // Try to get company id from the request
             string? companyId = req.Query["CompanyId"];
 
             try
             {
+                // Select case by request method
                 switch (req.Method)
                 {
                     case "GET":
+
+                        // Get device data from database and return it in JSON
                         if (id == "GetDevices") 
                         {
                             jsonData = GetDevicesFunction(companyId).Result;
 
                         }
+                        // Get company data from database and return it in JSON
                         if (id == "GetCompany") 
                         {
                             jsonData = GetCompanyFunction(companyId).Result;
@@ -41,30 +52,33 @@ namespace DeviceInfoHub
                         break;
 
                     case "POST":
-                        var headers = req.Headers;
-
+                        // Save or update company details to the database
                         if (id == "SaveCompany") 
                         {   
-                            jsonData = SaveCompanyFunction(headers).Result;
+                            jsonData = SaveCompanyFunction(req.Headers).Result;
                         }
                         break;
                 }
-                
+
+                // Create an HTTP response with status code 200 OK
                 var response = req.CreateResponse(HttpStatusCode.OK);
                 response.Headers.Add("Content-Type", "application/json; charset=utf-8");
-
                 response.WriteString(jsonData);
+
                 return response;
             }
-            catch (Exception ex)
+            catch (Exception ex) // In case an error occured
             {
                 logger.LogError($"An error occurred: {ex.Message}");
                 return req.CreateResponse(HttpStatusCode.InternalServerError);
             }
-
-
         }
 
+        /// <summary>
+        /// Gets device data from the database
+        /// </summary>
+        /// <param name="companyId">defined company id</param>
+        /// <returns>All or defined company devices</returns>
         public static async Task<string> GetDevicesFunction(string companyId)
         {
             string jsonData = "";
@@ -72,25 +86,34 @@ namespace DeviceInfoHub
 
             using (var context = new DeviceDbContext())
             {
+                // Company id is not defined
                 if (string.IsNullOrEmpty(companyId))
                 {
                     devices = await context.device.ToListAsync();
                 }
-                else
+                else // Company id is defined
                 {
+                    // Get all devices with defined company id in the database
                     devices = await context.device.Where(e => e.CompanyId == int.Parse(companyId)).ToListAsync();
                 }
+                // Serialize object to JSON
                 jsonData = JsonConvert.SerializeObject(devices);
             }
             return jsonData;
         }
 
+        /// <summary>
+        /// Gets company data from the database
+        /// </summary>
+        /// <param name="companyId">defined company id</param>
+        /// <returns>All or defined company details</returns>
         public static async Task<string> GetCompanyFunction(string companyId)
         {
             string jsonData = "";
 
             using (var context = new CompanyDbContext())
             {
+                // Get companies from the database in object with has no secret values
                 List<CompaniesDto> companies = await context.company.Select(e => new CompaniesDto
                 {
                     Id = e.Id,
@@ -100,78 +123,119 @@ namespace DeviceInfoHub
                     ClientSecret = !string.IsNullOrEmpty(e.ClientSecret),
                     KandjiApiKey = !string.IsNullOrEmpty(e.KandjiApiKey)
                 }).ToListAsync();
+
+                // Serialize object to JSON
                 jsonData = JsonConvert.SerializeObject(companies);
 
+                // Company id is defined
                 if (!string.IsNullOrEmpty(companyId))
                 {
+                    // Get company details 
                     var company = companies.Where(e => e.Id == int.Parse(companyId));
+                    // Serialize object to JSON
                     jsonData = JsonConvert.SerializeObject(company);
                 }
             }
             return jsonData;
         }
 
+        /// <summary>
+        /// Saves or updates company details in the database
+        /// </summary>
+        /// <param name="headers">header parameters</param>
+        /// <returns>JSON data</returns>
         public static async Task<string> SaveCompanyFunction(HttpHeadersCollection headers)
         {
             string jsonData = "";
+            Company company = new Company();
+
+            // Retrieve the encryption key for the database
             var DBCryptKey = Environment.GetEnvironmentVariable("DBCryptKey");
             
+            // Check if the DBCryptKey is available, otherwise log an error
             if (string.IsNullOrEmpty(DBCryptKey)) {
                 Console.WriteLine("Error: Check DBCryptKey!");
                 return "Error";
             }
 
-            Company company = new Company();
-
+            // Try to get company id from the header parameters
             if(headers.TryGetValues("CompanyId", out var id))
             {
+                // Set current company id
                 company.Id = int.Parse(id.First());
             }
 
-            if(headers.TryGetValues("CompanyName", out var name))
-            {
-                company.Name = name.First();
-            }
-            if(headers.TryGetValues("ClientId", out var clientId))
-            {
-                company.ClientId = EncryptionHelper.EncryptString(DBCryptKey, clientId.First());
-            }
-            if(headers.TryGetValues("ClientSecret", out var clientSecret))
-            {
-                company.ClientSecret = EncryptionHelper.EncryptString(DBCryptKey, clientSecret.First());
-            }
-            if(headers.TryGetValues("TenantId", out var tenantId))
-            {
-                company.TenantId = EncryptionHelper.EncryptString(DBCryptKey, tenantId.First());
-            }
-            if(headers.TryGetValues("KandjiApiKey", out var kandjiApiKey))
-            {
-                company.KandjiApiKey = EncryptionHelper.EncryptString(DBCryptKey, kandjiApiKey.First());
-            }
-            if(headers.TryGetValues("Archived", out var archived))
-            {
-                company.Archived = bool.Parse(archived.First());
-            }
-            company.LastUpdated = DateTime.Now;
-            DBCryptKey = null;
-
             using (var context = new CompanyDbContext())
             {
-                context.Database.EnsureCreated();
-                bool deviceExists = context.company.Any(u => u.Id == company.Id);
+                // If company exists in the database
+                var deviceExists = context.company.Where(u => u.Id == company.Id);
+                if (deviceExists.Count() > 0)
+                {
+                    // Set current company values with existing company values
+                    company = deviceExists.First();
+                }
+
+                // Try to get company name from the header parameters
+                if(headers.TryGetValues("CompanyName", out var name))
+                {
+                    // Set current company name
+                    company.Name = name.First();
+                }
+                // Try to get client id from the header parameters
+                if(headers.TryGetValues("ClientId", out var clientId))
+                {
+                    // Encrypt client id and set value
+                    company.ClientId = EncryptionHelper.EncryptString(DBCryptKey, clientId.First());
+                }
+                // Try to get client secret from the header parameters
+                if(headers.TryGetValues("ClientSecret", out var clientSecret))
+                {
+                    // Encrypt client secret and set value
+                    company.ClientSecret = EncryptionHelper.EncryptString(DBCryptKey, clientSecret.First());
+                }
+                // Try to get tenant id from the header parameters
+                if(headers.TryGetValues("TenantId", out var tenantId))
+                {
+                    // Encrypt tenant id and set value
+                    company.TenantId = EncryptionHelper.EncryptString(DBCryptKey, tenantId.First());
+                }
+                // Try to get kandji api key from the header parameters
+                if(headers.TryGetValues("KandjiApiKey", out var kandjiApiKey))
+                {
+                    // Encrypt kandji api key and set value
+                    company.KandjiApiKey = EncryptionHelper.EncryptString(DBCryptKey, kandjiApiKey.First());
+                }
+                // Try to get archived value from the header parameters
+                if(headers.TryGetValues("Archived", out var archived))
+                {
+                    // Set archived value
+                    company.Archived = bool.Parse(archived.First());
+                }
+                // Set last updated value to current date and time
+                company.LastUpdated = DateTime.Now;
+                // Set DBCryptKey to null value for security reasons
+                DBCryptKey = null;
                 
-                if (!deviceExists)
+                // If device added
+                if (deviceExists.Count() == 0)
                 {    
+                    // set company id 
                     company.Id = 0;
+                    // Add company to the database context
                     context.company.Add(company);
+                    // Set return value
                     jsonData = "Company added succesfully!";
                 }
-                else
+                else // If device updated
                 {
+                    // Update company to the database context
                     context.company.Update(company);
+                    // Set return value
                     jsonData = "Company updated succesfully!";
                 }
+                // Save changes to the database
                 context.SaveChanges();
+            
             }
             return jsonData;
         }

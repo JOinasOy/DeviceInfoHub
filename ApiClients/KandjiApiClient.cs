@@ -4,69 +4,68 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using DeviceInfoHub.DataModels;
 using DeviceInfoHub.Helpers;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
 namespace DeviceInfoHub.ApiClients
 {
+    /// <summary>
+    /// Client for interacting with Kandji API to fetch data related to organizations and devices.
+    /// </summary>
     public class KandjiApiClient
     {
         private static HttpClient _httpClient;
         private static string _apiKey;
-
+        
+        /// <summary>
+        /// Initializes the Kandji API client with the provided API key.
+        /// </summary>
+        /// <param name="apiKey">The API key for Kandji authentication.</param>
         public static void Initialize(string apiKey)
         {
+            // Retrieve the encryption key for the database
             string? DBCryptKey = Environment.GetEnvironmentVariable("DBCryptKey");
             
+            // Check if the DBCryptKey is available, otherwise log an error
             if (string.IsNullOrEmpty(DBCryptKey)) {
                 Console.WriteLine("Error: Check DBCryptKey!");
                 return;
             }
+            
+            // Decrypt the provided API key using the encryption key
             apiKey = EncryptionHelper.DecryptString(DBCryptKey, apiKey);
             DBCryptKey = null;
-
+            
+            // Set the API key and initialize the HttpClient
             _apiKey = apiKey;
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
-        }
+        }   
 
-        public static async Task<List<string>> GetOrganizations()
-        {
-            try
-            {
-                if (_httpClient == null)
-                {
-                    throw new InvalidOperationException("KandjiApiClient has not been initialized. Call Initialize method first.");
-                }
-
-                var response = await _httpClient.GetAsync("https://api.kandji.io/v1/organizations");
-                response.EnsureSuccessStatusCode();
-
-                var organizations = JsonConvert.DeserializeObject<List<string>>(await response.Content.ReadAsStringAsync());
-                return organizations;
-            }
-            catch (Exception ex)
-            {
-                // Handle exceptions
-                Console.WriteLine($"Error: {ex.Message}");
-                return new List<string>();
-            }
-        }
-
+        /// <summary>
+        /// Retrieves a list of devices from Kandji API for a specific company.
+        /// </summary>
+        /// <param name="companyId">The ID of the company to retrieve devices for.</param>
+        /// <returns>A list of devices.</returns>
         public static async Task<List<DataModels.Device>> GetDevices(int companyId)
         {
             try
             {
+                // Ensure the KandjiApiClient has been initialized
                 if (_httpClient == null)
                 {
                     throw new InvalidOperationException("KandjiApiClient has not been initialized. Call Initialize method first.");
                 }
 
+                // Send an HTTP GET request to retrieve devices
                 var response = await _httpClient.GetAsync("https://simplified.api.eu.kandji.io/api/v1/devices");
                 response.EnsureSuccessStatusCode();
 
+                // Deserialize the JSON response into a list of KandjiDevice objects
                 var devices = JsonConvert.DeserializeObject<List<KandjiDevice>>(await response.Content.ReadAsStringAsync());
                 var resultDevices = new List<DataModels.Device>();
-
+                
+                // Process each KandjiDevice and map it to the internal DataModels.Device
                 foreach (var device in devices)
                 {
                     var resultDevice = new DataModels.Device
@@ -74,14 +73,56 @@ namespace DeviceInfoHub.ApiClients
                         DeviceId = device.device_id,
                         CompanyId = companyId,
                         SerialNumber = device.serial_number,
-                        DisplayName = device.device_name,
-                        EnrolledDateTime = device.first_enrollment,
-                        OperatingSystem = $"{device.platform} {device.os_version}",
-                        LastUpdated = DateTime.Now
+                        DeviceName = device.device_name,
+                        FirstEnrollment = device.first_enrollment,
+                        Platform = device.platform,
+                        OsVersion = device.os_version,
+                        Manufacturer = "",
+                        Model = device.model,
+                        TotalStorageSpaceInBytes = 0,
+                        FreeStorageSpaceInBytes = 0,
+                        PhysicalMemoryInBytes = 0,
+                        Source = "Kandji",
+                        DBLastUpdated = DateTime.Now
                     };
+                    
+                    using (var context = new UsersDbContext())
+                    {
+                        // Check if device user already exists in the database
+                        var user = context.users.Where(u => u.UserPrincipalName == device.user && u.CompanyId == companyId);
+                        
+                        // User exists in the database. Set the Device UserId 
+                        if (user.Count() > 0)
+                        {
+                            resultDevice.UserId = user.First().Id;
+                        }
+                        else // User doesn't exists in the database. Create a new user to the database 
+                        {
+                            var newUser = new Users
+                            {
+                                UserId = "",
+                                CompanyId = companyId,
+                                DisplayName = "EMPTY",
+                                UserPrincipalName = device.user,
+                                Email = "",
+                                GivenName = "",
+                                Department = "",
+                                LastUpdated = DateTime.Now
+                            };
+                            
+                            context.users.Add(newUser);
+                            // Save changes to the database
+                            context.SaveChanges();
+                            
+                            // Gets just created user id value from the database and updates it to device userid value
+                            user = context.users.Where(u => u.UserPrincipalName == device.user && u.CompanyId == companyId);
+                            resultDevice.UserId = user.First().Id;
+                        }
+                    }
 
                     resultDevices.Add(resultDevice);
                 }
+                // return list of devices
                 return resultDevices;
             }
             catch (Exception ex)
@@ -92,6 +133,10 @@ namespace DeviceInfoHub.ApiClients
             }
         }
     }
+
+    /// <summary>
+    /// Represents a device data model for Kandji API response.
+    /// </summary>
     public class KandjiDevice
     {
         public string device_id { get; set; }

@@ -18,82 +18,95 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DeviceInfoHub.Function
 {
+    /// <summary>
+    /// FetchData is Azure Function which fetch device data from different sources (e.g. GraphAPI, KandjiAPI) 
+    /// </summary>
     public class FetchData
     {
+        // Azure Function triggered by HTTP requests (GET) with a specific authorization level
         [Function("FetchData")]
-        public static async Task<HttpResponseData> RunAsync([HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequestData req, FunctionContext executionContext)
+        public static async Task<HttpResponseData> RunAsync([HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req, FunctionContext executionContext)
         {
+            // Initialize logger to log information during function execution
             var logger = executionContext.GetLogger("HttpTriggerFunction");
-
             logger.LogInformation("C# HTTP trigger function processed a request.");
             
+            // Get companies from the database
             List<Company> companies = new List<Company>();
-
             using (var context = new CompanyDbContext())
             {
                 companies = await context.company.ToListAsync();
             }
 
+            // Iterate over each company and query device data from sources if not archived
             foreach (var company in companies)
             {
-
-                if (!string.IsNullOrEmpty(company.ClientId) && !string.IsNullOrEmpty(company.ClientSecret) && !string.IsNullOrEmpty(company.TenantId))
+                // If company is not arhived
+                if (!company.Archived)
                 {
-                    GraphApiClient.Initialize(company.TenantId, company.ClientId, company.ClientSecret);
-                    var users = await GraphApiClient.GetUsers();
-
-                    foreach (var user in users)
+                    // If company has valid Graph API credentials, initialize GraphApiClient and fetch devices
+                    if (!string.IsNullOrEmpty(company.ClientId) && !string.IsNullOrEmpty(company.ClientSecret) && !string.IsNullOrEmpty(company.TenantId))
                     {
-                        var userDevices = await GraphApiClient.GetUserDevices(company.Id, user);
+                        GraphApiClient.Initialize(company.TenantId, company.ClientId, company.ClientSecret);
 
-                        saveDevicesToDB(company, userDevices);
+                        var devices = await GraphApiClient.GetDevices(company.Id);
+
+                        saveDevicesToDB(company, devices);
+                    }
+
+                    // If company has a Kandji API key, initialize KandjiApiClient and fetch devices
+                    if (!string.IsNullOrEmpty(company.KandjiApiKey))
+                    {
+                        KandjiApiClient.Initialize(company.KandjiApiKey);
+
+                        var devices = await KandjiApiClient.GetDevices(company.Id);
+
+                        saveDevicesToDB(company, devices);
                     }
                 }
-
-                if (!string.IsNullOrEmpty(company.KandjiApiKey))
-                {
-                    KandjiApiClient.Initialize(company.KandjiApiKey);
-
-                    var userDevices = await KandjiApiClient.GetDevices(company.Id);
-
-                    saveDevicesToDB(company, userDevices);
-                }
             }
+
+            // Create an HTTP response with status code 200 OK
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
-
             response.WriteString("Executed succesfully!");
 
             return response;
         }
 
-        public static void saveDevicesToDB(Company company, List<DataModels.Device> userDevices)
+        // Method to save or update device data in the database
+        public static void saveDevicesToDB(Company company, List<DataModels.Device> devices)
         {
             using (var context = new DeviceDbContext())
             {
-                foreach (var device in userDevices)
+                foreach (var device in devices)
                 {
-
-                    context.Database.EnsureCreated();
+                    // Check if the device of current company already exists in the database
                     var item = context.device.Where(u => u.DeviceId == device.DeviceId && u.CompanyId == company.Id);
 
+                    // If device does not exist, add it to the database
                     if (item.Count() == 0)
                     {
                         context.device.Add(device);
                     }
-                    else
+                    else // If device exists, update it if necessary
                     {
                         var firstItem = item.First();
+                        // Check if current company and device id matches
                         if (device.CompanyId == firstItem.CompanyId && device.DeviceId == firstItem.DeviceId)
                         {
+                            // Update current device id 
                             device.Id = firstItem.Id;
+
+                            // Determines if the current device data is updated compared to another device instance.
                             if (device.isUpdated(firstItem))
                             {  
                                 context.Entry(item.First()).CurrentValues.SetValues(device);
                             }
                         }
                     }
-                    
+
+                    // Save changes to the database
                     context.SaveChanges();
                 }               
             }
