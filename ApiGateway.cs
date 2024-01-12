@@ -137,6 +137,7 @@ namespace DeviceInfoHub
                     ClientId = !string.IsNullOrEmpty(e.ClientId),
                     TenantId = !string.IsNullOrEmpty(e.TenantId),
                     ClientSecret = !string.IsNullOrEmpty(e.ClientSecret),
+                    KandjiURL = e.KandjiURL,
                     KandjiApiKey = !string.IsNullOrEmpty(e.KandjiApiKey)
                 }).ToListAsync();
 
@@ -288,6 +289,12 @@ namespace DeviceInfoHub
             {
                 // Encrypt tenant id and set value
                 company.TenantId = EncryptionHelper.EncryptString(DBCryptKey, tenantId.First());
+            }
+            // Try to get kandji api URL from the header parameters
+            if(headers.TryGetValues("KandjiURL", out var kandjiURL))
+            {
+                // Encrypt kandji api URL and set value
+                company.KandjiURL = kandjiURL.First();
             }
             // Try to get kandji api key from the header parameters
             if(headers.TryGetValues("KandjiApiKey", out var kandjiApiKey))

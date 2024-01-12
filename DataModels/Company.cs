@@ -22,6 +22,8 @@ namespace DeviceInfoHub.DataModels
         public string? TenantId { get; set; }
         // Client Secret used for authentication to the OAUTH (GraphAPI)
         public string? ClientSecret { get; set; }
+        // API URL for Kandji authentication
+        public string? KandjiURL { get; set; }
         // API key for Kandji authentication
         public string? KandjiApiKey { get; set; }
         // Timestamp of the last update made to this company's record

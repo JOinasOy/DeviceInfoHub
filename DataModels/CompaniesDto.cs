@@ -22,6 +22,7 @@ namespace DeviceInfoHub.DataModels
 
         public bool? ClientSecret { get; set; }
 
+        public string? KandjiURL { get; set; }
         public bool? KandjiApiKey { get; set; }
     }
 }

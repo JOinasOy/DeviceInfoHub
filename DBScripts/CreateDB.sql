@@ -15,8 +15,6 @@
     - Device: Holds information about devices, linked to users and companies.
     - Application: Stores details about applications installed on devices.
     - Policy: Contains policy information applied to devices.
-
-    Note: This script assumes a SQL Server environment and should be executed by a database administrator or through an automated deployment process.
 */
 
 -- Create a new database
@@ -34,6 +32,7 @@ CREATE TABLE Company (
     ClientId NVARCHAR(70),
     TenantId NVARCHAR(70),
     ClientSecret NVARCHAR(70),
+    KandjiURL NVARCHAR(100),
     KandjiApiKey NVARCHAR(70),
     LastUpdated datetime,
     Archived BIT,
@@ -68,8 +67,8 @@ CREATE TABLE Device (
     LastEnrollment datetime,
     Platform nvarchar(50),
     OsVersion nvarchar(50),
-    LastCheckIn datetime,
-    Model nvarchar(50),
+    LastSyncDateTime datetime,
+    Model nvarchar(255),
     Manufacturer nvarchar(50),
     SerialNumber nvarchar(30),
     TotalStorageSpaceInBytes BIGINT,

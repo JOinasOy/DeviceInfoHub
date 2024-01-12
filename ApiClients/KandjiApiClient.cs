@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using DeviceInfoHub.DataModels;
 using DeviceInfoHub.Helpers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Graph.Models;
 using Newtonsoft.Json;
 
 namespace DeviceInfoHub.ApiClients
@@ -15,13 +16,14 @@ namespace DeviceInfoHub.ApiClients
     public class KandjiApiClient
     {
         private static HttpClient _httpClient;
+        private static string _apiURL;
         private static string _apiKey;
         
         /// <summary>
         /// Initializes the Kandji API client with the provided API key.
         /// </summary>
         /// <param name="apiKey">The API key for Kandji authentication.</param>
-        public static void Initialize(string apiKey)
+        public static void Initialize(string apiURL, string apiKey)
         {
             // Retrieve the encryption key for the database
             string? DBCryptKey = Environment.GetEnvironmentVariable("DBCryptKey");
@@ -38,6 +40,7 @@ namespace DeviceInfoHub.ApiClients
             
             // Set the API key and initialize the HttpClient
             _apiKey = apiKey;
+            _apiURL = apiURL;
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
         }   
@@ -58,7 +61,7 @@ namespace DeviceInfoHub.ApiClients
                 }
 
                 // Send an HTTP GET request to retrieve devices
-                var response = await _httpClient.GetAsync("https://simplified.api.eu.kandji.io/api/v1/devices");
+                var response = await _httpClient.GetAsync(_apiURL + "/api/v1/devices");
                 response.EnsureSuccessStatusCode();
 
                 // Deserialize the JSON response into a list of KandjiDevice objects
@@ -79,6 +82,7 @@ namespace DeviceInfoHub.ApiClients
                         OsVersion = device.os_version,
                         Manufacturer = "",
                         Model = device.model,
+                        LastSyncDateTime = device.last_check_in,
                         TotalStorageSpaceInBytes = 0,
                         FreeStorageSpaceInBytes = 0,
                         PhysicalMemoryInBytes = 0,
@@ -88,8 +92,14 @@ namespace DeviceInfoHub.ApiClients
                     
                     using (var context = new UsersDbContext())
                     {
+                        string currentUserID = "UNKNOWN";
+                        
+                        if (device.user != null)
+                        {
+                            currentUserID = device.user["id"];
+                        }
                         // Check if device user already exists in the database
-                        var user = context.users.Where(u => u.UserPrincipalName == device.user && u.CompanyId == companyId);
+                        var user = context.users.Where(u => u.UserId == currentUserID && u.CompanyId == companyId);
                         
                         // User exists in the database. Set the Device UserId 
                         if (user.Count() > 0)
@@ -98,28 +108,45 @@ namespace DeviceInfoHub.ApiClients
                         }
                         else // User doesn't exists in the database. Create a new user to the database 
                         {
-                            var newUser = new Users
+                            var newUser = new Users();
+
+                            // If user details exists in device data 
+                            if (device.user != null)
                             {
-                                UserId = "",
-                                CompanyId = companyId,
-                                DisplayName = "EMPTY",
-                                UserPrincipalName = device.user,
-                                Email = "",
-                                GivenName = "",
-                                Department = "",
-                                LastUpdated = DateTime.Now
-                            };
+                                newUser = new Users
+                                {
+                                    UserId = device.user["id"],
+                                    CompanyId = companyId,
+                                    DisplayName = device.user["name"],
+                                    UserPrincipalName = "",
+                                    Email = device.user["email"],
+                                    GivenName = "",
+                                    Department = "",
+                                    LastUpdated = DateTime.Now,
+                                    Archived = bool.Parse(device.user["is_archived"])
+                                };
+                            }
+                            else // User details doesn't found. Add unknown user 
+                            {
+                                newUser = new Users
+                                {
+                                    UserId = currentUserID,
+                                    CompanyId = companyId,
+                                    DisplayName = "UNKNOWN",
+                                    LastUpdated = DateTime.Now,
+                                    Archived = false
+                                };
+                            }
                             
                             context.users.Add(newUser);
                             // Save changes to the database
                             context.SaveChanges();
                             
                             // Gets just created user id value from the database and updates it to device userid value
-                            user = context.users.Where(u => u.UserPrincipalName == device.user && u.CompanyId == companyId);
+                            user = context.users.Where(u => u.UserId == currentUserID && u.CompanyId == companyId);
                             resultDevice.UserId = user.First().Id;
                         }
                     }
-
                     resultDevices.Add(resultDevice);
                 }
                 // return list of devices
@@ -148,7 +175,7 @@ namespace DeviceInfoHub.ApiClients
         public string supplemental_build_version { get; set; }
         public string supplemental_os_version_extra { get; set; }
         public DateTime last_check_in { get; set; }
-        public string user { get; set; }
+        public Dictionary<string,string> user { get; set; }
         public string asset_tag { get; set; }
         public string blueprint_id { get; set; }
         public bool mdm_enabled { get; set; }

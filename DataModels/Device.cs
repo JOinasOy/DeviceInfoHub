@@ -38,8 +38,8 @@ namespace DeviceInfoHub.DataModels
         public string? Platform { get; set; }
         // Operating system version of the device
         public string? OsVersion { get; set; }
-        // Date and time of the device's last check-in
-        public DateTime? LastCheckIn { get; set; }
+        // Date and time of the device's last sync DateTime
+        public DateTime? LastSyncDateTime { get; set; }
         // Date and time when the database record was last updated
         public DateTime? DBLastUpdated { get; set; }
         // Description of the last updates made to the database record

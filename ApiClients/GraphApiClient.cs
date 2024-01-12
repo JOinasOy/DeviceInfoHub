@@ -70,6 +70,7 @@ namespace DeviceInfoHub.ApiClients
 
                 // Fetch devices from Microsoft Graph
                 var devices = await _current.DeviceManagement.ManagedDevices.GetAsync();
+                var users = await _current.Users.GetAsync();
                 var intDevices = new List<DataModels.Device>();
 
                 // Process each device and map it to the internal data model
@@ -86,6 +87,7 @@ namespace DeviceInfoHub.ApiClients
                         OsVersion = device.OsVersion,
                         Manufacturer = device.Manufacturer,
                         Model = device.Model,
+                        LastSyncDateTime = device.LastSyncDateTime?.DateTime ?? DateTime.MinValue,
                         TotalStorageSpaceInBytes = device.TotalStorageSpaceInBytes,
                         FreeStorageSpaceInBytes = device.FreeStorageSpaceInBytes,
                         PhysicalMemoryInBytes = device.PhysicalMemoryInBytes,
@@ -97,11 +99,29 @@ namespace DeviceInfoHub.ApiClients
                     {
                         // Check if device user already exists in the database
                         var user = context.users.Where(u => u.UserId == device.UserId && u.CompanyId == companyId);
-                        
+                       
                         // User exists in the database. Set the Device UserId 
                         if (user.Count() > 0)
                         {
                             intDevice.UserId = user.First().Id;
+                         
+                            // Find correct user from Graph Users and save department info
+                            foreach (var existsUser in users.Value)
+                            {
+                                if (existsUser.Id == user.First().UserId)
+                                {
+                                    if (string.IsNullOrEmpty(existsUser.Department))
+                                    {
+                                        user.First().Department = "undefined";
+                                    }
+                                    else
+                                    {
+                                        user.First().Department = existsUser.Department;
+                                    }
+                                    context.users.Update(user.First());
+                                }
+                            }
+                            context.SaveChanges();
                         }
                         else // User doesn't exists in the database. Create a new user to the database
                         {

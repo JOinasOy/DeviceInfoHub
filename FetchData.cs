@@ -58,9 +58,9 @@ namespace DeviceInfoHub.Function
                         }
 
                         // If company has a Kandji API key, initialize KandjiApiClient and fetch devices
-                        if (!string.IsNullOrEmpty(company.KandjiApiKey))
+                        if (!string.IsNullOrEmpty(company.KandjiURL) && !string.IsNullOrEmpty(company.KandjiApiKey))
                         {
-                            KandjiApiClient.Initialize(company.KandjiApiKey);
+                            KandjiApiClient.Initialize(company.KandjiURL, company.KandjiApiKey);
 
                             var kandjiDevices = await KandjiApiClient.GetDevices(company.Id);
                             devices.AddRange(kandjiDevices);
@@ -84,7 +84,7 @@ namespace DeviceInfoHub.Function
             catch (Exception ex) // In case an error occured
             {
                 ResponseInfo resInfo = new ResponseInfo(req.Method + " FetchData: failed");
-                resInfo.Details = new { ErrorText = ex.Message };
+                resInfo.Details = new { ErrorText = ex.Message, InnerException = ex.InnerException };
                 logger.LogError($"An error occurred: {ex.Message}");
                 
                 var response = req.CreateResponse(HttpStatusCode.OK);
