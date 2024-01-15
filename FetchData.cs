@@ -28,7 +28,7 @@ namespace DeviceInfoHub.Function
         public static async Task<HttpResponseData> RunAsync([HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req, FunctionContext executionContext)
         {
             List<DataModels.Device> devices = new List<DataModels.Device>();
-
+            int devicesFetchedCount = 0;
             // Initialize logger to log information during function execution
             var logger = executionContext.GetLogger("HttpTriggerFunction");
             logger.LogInformation("C# HTTP trigger function processed a request.");
@@ -67,13 +67,16 @@ namespace DeviceInfoHub.Function
                         }
                         // Save devices to database
                         saveDevicesToDB(company, devices);
+                        devicesFetchedCount += devices.Count();
+                        devices = new List<DataModels.Device>();
+                        
                     }
                 }
 
                 // Create an HTTP response with status code 200 OK
                 ResponseInfo resInfo = new ResponseInfo("Devices fetched successfully!");
                 resInfo.Details = new { 
-                    count = devices.Count()
+                    count = devicesFetchedCount,
                 };
                 var response = req.CreateResponse(HttpStatusCode.OK);
                 response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
