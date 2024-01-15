@@ -96,15 +96,19 @@ namespace DeviceInfoHub.DataModels
                 update = true;
             }
 
-            // Concatenates the list of updates into a single string, separated by commas.
-            DBLastUpdatedDesc = String.Join(", ", updatedThings);
-            
-            // Checks if the length of the concatenated updates string exceeds 250 characters.
-            if (DBLastUpdatedDesc.Length >= 250)
+            // Checks if above data of device is updated 
+            if (update)
             {
-                // If it does, truncate the string to the first 250 characters.
-                // This ensures the description fits within a potential database field size limit.
-                DBLastUpdatedDesc = DBLastUpdatedDesc.Substring(0,250);
+                // Concatenates the list of updates into a single string, separated by commas.
+                DBLastUpdatedDesc = String.Join(", ", updatedThings);
+                
+                // Checks if the length of the concatenated updates string exceeds 250 characters.
+                if (DBLastUpdatedDesc.Length >= 250)
+                {
+                    // If it does, truncate the string to the first 250 characters.
+                    // This ensures the description fits within a potential database field size limit.
+                    DBLastUpdatedDesc = DBLastUpdatedDesc.Substring(0,250);
+                }
             }
 
             return update;

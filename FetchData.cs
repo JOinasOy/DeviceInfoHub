@@ -122,10 +122,10 @@ namespace DeviceInfoHub.Function
                             device.Id = firstItem.Id;
 
                             // Determines if the current device data is updated compared to another device instance.
-                            if (device.isUpdated(firstItem))
-                            {  
-                                context.Entry(item.First()).CurrentValues.SetValues(device);
-                            }
+                            device.isUpdated(firstItem);
+                            
+                            // Updates device data to DB context
+                            context.Entry(firstItem).CurrentValues.SetValues(device);
                         }
                     }
 
