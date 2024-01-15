@@ -110,6 +110,10 @@ namespace DeviceInfoHub.DataModels
                     DBLastUpdatedDesc = DBLastUpdatedDesc.Substring(0,250);
                 }
             }
+            else
+            {
+                DBLastUpdatedDesc = other.DBLastUpdatedDesc;
+            }
 
             return update;
         }
