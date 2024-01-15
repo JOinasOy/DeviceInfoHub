@@ -24,5 +24,7 @@ namespace DeviceInfoHub.DataModels
 
         public string? KandjiURL { get; set; }
         public bool? KandjiApiKey { get; set; }
+
+        public bool Archived { get; set; }
     }
 }

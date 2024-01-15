@@ -138,7 +138,8 @@ namespace DeviceInfoHub
                     TenantId = !string.IsNullOrEmpty(e.TenantId),
                     ClientSecret = !string.IsNullOrEmpty(e.ClientSecret),
                     KandjiURL = e.KandjiURL,
-                    KandjiApiKey = !string.IsNullOrEmpty(e.KandjiApiKey)
+                    KandjiApiKey = !string.IsNullOrEmpty(e.KandjiApiKey),
+                    Archived = e.Archived
                 }).ToListAsync();
 
                 // Serialize object to JSON
