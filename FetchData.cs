@@ -122,7 +122,28 @@ namespace DeviceInfoHub.Function
                             device.Id = firstItem.Id;
 
                             // Determines if the current device data is updated compared to another device instance.
-                            device.isUpdated(firstItem);
+                            var updateText = device.isUpdated(firstItem);
+                            
+                            // Check if is not null
+                            if (!string.IsNullOrEmpty(updateText))
+                            {
+                                using (var changeLogContext = new DeviceChangeLogDbContext())
+                                {
+                                    // Create a new ChangeLog item for device
+                                    DeviceChangeLog newDeviceChangeLog = new DeviceChangeLog
+                                    {
+                                        DeviceId = device.Id,
+                                        UpdateTime = DateTime.Now,
+                                        UpdateTxt = updateText
+                                    };
+                                    
+                                    // Add to DB context
+                                    changeLogContext.Add(newDeviceChangeLog);
+
+                                    // Save DB context
+                                    changeLogContext.SaveChanges();
+                                }
+                            }
                             
                             // Updates device data to DB context
                             context.Entry(firstItem).CurrentValues.SetValues(device);

@@ -30,7 +30,10 @@ namespace DeviceInfoHub
 
             // Try to get company id from the request
             string? companyId = req.Query["CompanyId"];
-
+            
+            // Try to get company id from the request
+            string? deviceId = req.Query["DeviceId"];
+            
             try
             {
                 // Select case by request method
@@ -53,6 +56,11 @@ namespace DeviceInfoHub
                         if (id == "GetUsers") 
                         {
                             jsonData = GetUsersFunction(companyId).Result;
+                        }
+                        // Get device change log list from database and return it in JSON
+                        if (id == "GetDeviceChangeLog") 
+                        {
+                            jsonData = GetDeviceChangeLogFunction(deviceId).Result;
                         }
                         break;
 
@@ -105,15 +113,43 @@ namespace DeviceInfoHub
                 // Company id is not defined
                 if (string.IsNullOrEmpty(companyId))
                 {
-                    devices = await context.device.ToListAsync();
+                    devices = await context.device.Include(o => o.User).ToListAsync();
                 }
                 else // Company id is defined
                 {
                     // Get all devices with defined company id in the database
-                    devices = await context.device.Where(e => e.CompanyId == int.Parse(companyId)).ToListAsync();
+                    devices = await context.device.Include(o => o.User).Where(e => e.CompanyId == int.Parse(companyId)).ToListAsync();
                 }
                 // Serialize object to JSON
                 jsonData = JsonConvert.SerializeObject(devices);
+            }
+            return jsonData;
+        }
+        
+        /// <summary>
+        /// Gets device change log data from the database
+        /// </summary>
+        /// <param name="companyId">defined device id</param>
+        /// <returns>All or defined device change log items</returns>
+        private static async Task<string> GetDeviceChangeLogFunction(string deviceId)
+        {
+            string jsonData = "";
+            List<DataModels.DeviceChangeLog> deviceChangeLogs;
+
+            using (var context = new DeviceChangeLogDbContext())
+            {
+                // Device id is not defined
+                if (string.IsNullOrEmpty(deviceId))
+                {
+                    deviceChangeLogs = await context.deviceChangeLog.Include(o => o.device).ToListAsync();
+                }
+                else // Device id is defined
+                {
+                    // Get all device change log items with defined device id in the database
+                    deviceChangeLogs = await context.deviceChangeLog.Include(o => o.device).Where(e => e.DeviceId == int.Parse(deviceId)).ToListAsync();
+                }
+                // Serialize object to JSON
+                jsonData = JsonConvert.SerializeObject(deviceChangeLogs);
             }
             return jsonData;
         }

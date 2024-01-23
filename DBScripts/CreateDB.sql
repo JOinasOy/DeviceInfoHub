@@ -75,34 +75,18 @@ CREATE TABLE Device (
     FreeStorageSpaceInBytes BIGINT,
     PhysicalMemoryInBytes BIGINT,
     DBLastUpdated datetime,
-    DBLastUpdatedDesc nvarchar(255),
     Source nvarchar(50),
     Archived BIT,
     PRIMARY KEY (Id)
 );
 GO
 
--- Create the Application table
-CREATE TABLE Application (
+-- Create the DeviceChangeLog table
+CREATE TABLE DeviceChangeLog (
     Id INT IDENTITY(1,1) NOT NULL,
-    DisplayName nvarchar(50),
-    Publisher nvarchar(50),
-    Version nvarchar(50),
-    DeviceId int REFERENCES Device(Id),
-    LastUpdated datetime,
-    Archived BIT,
-    PRIMARY KEY (Id)
-);
-GO
-
--- Create the Policy table
-CREATE TABLE Policy (
-    Id INT IDENTITY(1,1) NOT NULL,
-    Name nvarchar(50),
-    Description nvarchar(max),
-    DeviceId int REFERENCES Device(Id),
-    LastUpdated datetime,
-    Archived BIT,
+    DeviceId nvarchar(50),
+    UpdateTime datetime,
+    UpdateTxt text,
     PRIMARY KEY (Id)
 );
 GO

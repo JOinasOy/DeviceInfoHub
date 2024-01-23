@@ -103,8 +103,6 @@ namespace DeviceInfoHub.ApiClients
                         // User exists in the database. Set the Device UserId 
                         if (user.Count() > 0)
                         {
-                            intDevice.UserId = user.First().Id;
-                         
                             // Find correct user from Graph Users and save department info
                             foreach (var existsUser in users.Value)
                             {
@@ -121,6 +119,9 @@ namespace DeviceInfoHub.ApiClients
                                     context.users.Update(user.First());
                                 }
                             }
+
+                            intDevice.UserId = user.First().Id;
+
                             context.SaveChanges();
                         }
                         else // User doesn't exists in the database. Create a new user to the database
