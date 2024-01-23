@@ -13,8 +13,7 @@
     - Company: Stores information about companies.
     - Users: Contains user details and links to their respective companies.
     - Device: Holds information about devices, linked to users and companies.
-    - Application: Stores details about applications installed on devices.
-    - Policy: Contains policy information applied to devices.
+    - DeviceChangeLog: Stores Change Log items 
 */
 
 -- Create a new database
