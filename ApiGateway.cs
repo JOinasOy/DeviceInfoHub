@@ -141,12 +141,12 @@ namespace DeviceInfoHub
                 // Device id is not defined
                 if (string.IsNullOrEmpty(deviceId))
                 {
-                    deviceChangeLogs = await context.deviceChangeLog.Include(o => o.device).ToListAsync();
+                    deviceChangeLogs = await context.deviceChangeLog.Include(o => o.device).Take(50).ToListAsync();
                 }
                 else // Device id is defined
                 {
                     // Get all device change log items with defined device id in the database
-                    deviceChangeLogs = await context.deviceChangeLog.Include(o => o.device).Where(e => e.DeviceId == int.Parse(deviceId)).ToListAsync();
+                    deviceChangeLogs = await context.deviceChangeLog.Where(e => e.DeviceId == int.Parse(deviceId)).Take(100).ToListAsync();
                 }
                 // Serialize object to JSON
                 jsonData = JsonConvert.SerializeObject(deviceChangeLogs);

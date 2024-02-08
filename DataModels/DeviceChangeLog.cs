@@ -19,7 +19,7 @@ namespace DeviceInfoHub.DataModels
         // Unique identifier assigned to the device
         public int DeviceId { get; set; }
         // Device object
-        public Device device { get; set; }
+        public Device? device { get; set; }
         // Date and time when the database record was last updated
         public DateTime? UpdateTime { get; set; }
         // Description of the last updates made to the database record

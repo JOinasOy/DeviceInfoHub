@@ -83,7 +83,7 @@ GO
 -- Create the DeviceChangeLog table
 CREATE TABLE DeviceChangeLog (
     Id INT IDENTITY(1,1) NOT NULL,
-    DeviceId nvarchar(50),
+    DeviceId int,
     UpdateTime datetime,
     UpdateTxt text,
     PRIMARY KEY (Id)
