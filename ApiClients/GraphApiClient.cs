@@ -97,8 +97,15 @@ namespace DeviceInfoHub.ApiClients
                     
                     using (var context = new UsersDbContext())
                     {
+                        string currentUserID = "UNKNOWN";
+                        
+                        if (!string.IsNullOrEmpty(device.UserId))
+                        {
+                            currentUserID = device.UserId;
+                        }
+
                         // Check if device user already exists in the database
-                        var user = context.users.Where(u => u.UserId == device.UserId && u.CompanyId == companyId);
+                        var user = context.users.Where(u => u.UserId == currentUserID && u.CompanyId == companyId);
                        
                         // User exists in the database. Set the Device UserId 
                         if (user.Count() > 0)
@@ -126,17 +133,34 @@ namespace DeviceInfoHub.ApiClients
                         }
                         else // User doesn't exists in the database. Create a new user to the database
                         {
-                            var newUser = new Users
+                            var newUser = new Users();
+
+                            // If user details exists in device data 
+                            if (!string.IsNullOrEmpty(device.UserId))
                             {
-                                UserId = device.UserId,
-                                CompanyId = companyId,
-                                DisplayName = device.UserDisplayName,
-                                UserPrincipalName = device.UserPrincipalName,
-                                Email = device.EmailAddress,
-                                GivenName = "",
-                                Department = "",
-                                LastUpdated = DateTime.Now
-                            };
+                                newUser = new Users
+                                {
+                                    UserId = device.UserId,
+                                    CompanyId = companyId,
+                                    DisplayName = device.UserDisplayName,
+                                    UserPrincipalName = device.UserPrincipalName,
+                                    Email = device.EmailAddress,
+                                    GivenName = "",
+                                    Department = "",
+                                    LastUpdated = DateTime.Now
+                                };
+                            }
+                            else // User details doesn't found. Add unknown user
+                            {
+                                newUser = new Users
+                                {
+                                    UserId = currentUserID,
+                                    CompanyId = companyId,
+                                    DisplayName = "UNKNOWN",
+                                    LastUpdated = DateTime.Now,
+                                    Archived = false
+                                };
+                            }
                             context.users.Add(newUser);
                             // Save changes to the database
                             context.SaveChanges();
