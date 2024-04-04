@@ -141,7 +141,11 @@ namespace DeviceInfoHub
                 // Device id is not defined
                 if (string.IsNullOrEmpty(deviceId))
                 {
-                    deviceChangeLogs = await context.deviceChangeLog.Include(o => o.device).Take(50).ToListAsync();
+                    deviceChangeLogs = await context.deviceChangeLog
+                                       .Include(o => o.device) // Include related device data
+                                       .OrderByDescending(o => o.UpdateTime) // Order by UpdateTime column, descending
+                                       .Take(50) // Take the latest 50 records
+                                       .ToListAsync(); // Execute the query asynchronously and get the result list
                 }
                 else // Device id is defined
                 {
